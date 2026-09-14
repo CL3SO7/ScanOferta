@@ -1,8 +1,0 @@
-{
-  "framework": "vite",
-  "functions": {
-    "api/urlscan.js": {
-      "maxDuration": 10
-    }
-  }
-}

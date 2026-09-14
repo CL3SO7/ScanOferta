@@ -1,0 +1,28 @@
+import {useEffect,useMemo,useState} from 'react'
+import {FlaskConical,ExternalLink,Layers3,Clock3,Search,ArrowUpRight} from 'lucide-react'
+const metaAd=id=>`https://www.facebook.com/ads/library/?id=${encodeURIComponent(id||'')}`
+function priority(x){
+ let s=x.score||0
+ if((x.days||0)>=30)s+=8;if((x.days||0)>=60)s+=5
+ if((x.metaVariants||1)>=3)s+=7;if((x.metaVariants||1)>=8)s+=5
+ if(x.checkout)s+=5;if(x.hasVideo)s+=3
+ return Math.min(100,s)
+}
+function tier(s){return s>=80?'🔥 Investigar primeiro':s>=60?'🟢 Promissora':s>=40?'🟡 Coletar evidência':'⚪ Evidência fraca'}
+export default function InvestigationCenter(){
+ const[items,setItems]=useState([]),[q,setQ]=useState('')
+ useEffect(()=>{const h=e=>{if(e.data?.type==='OFERTA_RADAR_INBOX')setItems(e.data.payload||[])};window.addEventListener('message',h);window.postMessage({type:'OFERTA_RADAR_REQUEST_INBOX'},'*');return()=>window.removeEventListener('message',h)},[])
+ const groups=useMemo(()=>{
+  const map=new Map()
+  for(const x of items){const key=(x.pageName||'').toLowerCase().trim()||x.libraryId;if(!map.has(key))map.set(key,{name:x.pageName,ads:[],queries:new Set(),maxDays:0,variants:0,images:new Set(),best:0});const g=map.get(key);g.ads.push(x);if(x.searchQuery)g.queries.add(x.searchQuery);g.maxDays=Math.max(g.maxDays,x.days||0);g.variants+=x.metaVariants||1;(x.images||[]).forEach(i=>g.images.add(i));g.best=Math.max(g.best,priority(x))}
+  return [...map.values()].map(g=>({...g,queries:[...g.queries],images:[...g.images],score:Math.min(100,g.best+Math.min(12,(g.ads.length-1)*4)+Math.min(10,(g.queries.length-1)*5))})).filter(g=>!q||JSON.stringify(g).toLowerCase().includes(q.toLowerCase())).sort((a,b)=>b.score-a.score)
+ },[items,q])
+ return <div>
+  <section className="rounded-3xl border border-zinc-800/80 bg-gradient-to-br from-zinc-900/90 via-zinc-900/55 to-blue-950/20 p-6 shadow-2xl shadow-black/20"><div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between"><div><div className="flex items-center gap-2"><div className="grid h-9 w-9 place-items-center rounded-xl border border-blue-400/20 bg-blue-400/10"><FlaskConical className="h-4 w-4 text-blue-300"/></div><div><h2 className="text-xl font-bold tracking-tight">Central de Investigação</h2><p className="text-[11px] text-zinc-500">triagem das operações encontradas</p></div></div><p className="mt-4 max-w-3xl text-sm leading-relaxed text-zinc-400">Agrupa o que você coletou na Meta e prioriza operações com mais evidência. A Biblioteca serve para descobrir; aqui você decide o que merece investigação.</p></div><div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl border border-zinc-800 bg-black/20 px-5 py-3"><b className="text-xl">{groups.length}</b><div className="text-[9px] uppercase tracking-wider text-zinc-600">operações</div></div><div className="rounded-xl border border-zinc-800 bg-black/20 px-5 py-3"><b className="text-xl text-emerald-300">{groups.filter(x=>x.score>=80).length}</b><div className="text-[9px] uppercase tracking-wider text-zinc-600">prioridade</div></div><div className="rounded-xl border border-zinc-800 bg-black/20 px-5 py-3"><b className="text-xl">{items.length}</b><div className="text-[9px] uppercase tracking-wider text-zinc-600">anúncios</div></div></div></div>
+   <div className="mt-5 flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 px-4"><Search className="h-4 w-4 text-zinc-600"/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Filtrar operação, palavra pesquisada..." className="w-full bg-transparent py-3 text-sm outline-none"/></div></section>
+  <div className="mt-5 grid gap-3 xl:grid-cols-2">{groups.map(g=><article key={g.name} className="rounded-2xl border border-zinc-800 bg-zinc-900/55 p-5 transition hover:border-zinc-700"><div className="flex items-start gap-4">{g.images[0]&&<img src={g.images[0]} className="h-20 w-24 rounded-xl object-cover"/>}<div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-3"><div><div className={`text-[10px] font-bold uppercase tracking-wider ${g.score>=80?'text-emerald-300':g.score>=60?'text-blue-300':'text-zinc-500'}`}>{tier(g.score)}</div><h3 className="mt-1 truncate text-base font-bold">{g.name}</h3></div><div className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xl font-black">{g.score}</div></div><div className="mt-3 grid grid-cols-4 gap-2"><div><b>{g.ads.length}</b><div className="text-[9px] text-zinc-600">capturas</div></div><div><b>{g.maxDays||'—'}</b><div className="text-[9px] text-zinc-600">dias</div></div><div><b>{g.variants}</b><div className="text-[9px] text-zinc-600">variações</div></div><div><b>{g.queries.length}</b><div className="text-[9px] text-zinc-600">pesquisas</div></div></div></div></div>
+   {g.queries.length>0&&<div className="mt-4 flex flex-wrap gap-1.5">{g.queries.slice(0,6).map(x=><span key={x} className="rounded-lg bg-zinc-950 px-2 py-1 text-[10px] text-zinc-400">{x}</span>)}</div>}
+   <div className="mt-4 flex gap-2"><a href={metaAd(g.ads[0]?.libraryId)} target="_blank" rel="noreferrer" className="flex-1 rounded-xl bg-blue-500/10 px-3 py-2.5 text-center text-xs font-bold text-blue-300">Ver anúncio exato</a>{g.ads[0]?.destinations?.[0]&&<a href={g.ads[0].destinations[0]} target="_blank" rel="noreferrer" className="rounded-xl border border-zinc-800 px-3 py-2.5 text-zinc-400"><ExternalLink className="h-4 w-4"/></a>}</div></article>)}</div>
+  {!groups.length&&<div className="mt-5 rounded-2xl border border-dashed border-zinc-800 py-16 text-center text-sm text-zinc-600">Selecione anúncios na extensão e envie para o Radar. A Central começará a agrupar e priorizar as operações.</div>}
+ </div>
+}
